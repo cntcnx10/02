@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atelier de Boulette | The Dimensional Meatball Gallery</title>
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Google Model Viewer สำหรับแสดงผล 3D -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -73,15 +70,20 @@
         .team-card img { transition: all 0.4s ease; border: 2px solid rgba(255, 255, 255, 0.1); }
         .team-card:hover img { border-color: #D4AF37; transform: scale(1.05); }
         
-        .animate-fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .custom-modal.active { opacity: 1; visibility: visible; }
+        .modal-content-scale { transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .custom-modal.active .modal-content-scale { transform: scale(1); }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="font-sans antialiased overflow-x-hidden selection:bg-stardust selection:text-void">
+<body class="font-sans antialiased overflow-x-hidden selection:bg-stardust selection:text-void text-white">
 
     <div id="warpPortal" class="warp-portal"></div>
 
-    <div id="toastMsg" class="fixed top-24 right-4 glass-panel border-l-4 border-stardust px-6 py-4 rounded-r shadow-2xl transform translate-x-full opacity-0 transition-all duration-300 z-50 flex items-center space-x-3">
+    <div id="toastMsg" class="fixed top-24 right-4 glass-panel border-l-4 border-stardust px-6 py-4 rounded-r shadow-2xl transform translate-x-full opacity-0 transition-all duration-300 z-[70] flex items-center space-x-3">
         <span class="text-2xl">✨</span>
         <div>
             <h4 class="font-serif text-stardust font-bold text-sm">Warp Successful</h4>
@@ -89,409 +91,336 @@
         </div>
     </div>
 
-    <!-- Navbar -->
     <nav class="fixed w-full z-40 glass-panel border-b-0">
         <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <img src="logo.png" alt="Logo" class="h-12 md:h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_8px_rgba(212,175,55,0.3)]" onerror="this.style.display='none'">
-                <h1 class="font-serif text-lg md:text-xl tracking-widest text-stardust uppercase hidden sm:block">Atelier de Boulette</h1>
+            <div class="flex items-center space-x-3">
+                <img src="logo.png" alt="Logo" class="w-12 h-16 object-contain mix-blend-screen drop-shadow-[0_0_8px_rgba(212,175,55,0.3)]" onerror="this.src='https://via.placeholder.com/48x64/1A1C29/D4AF37?text=LOGO'">
+                <h1 class="font-serif text-xl tracking-widest text-stardust uppercase hidden sm:block">Atelier de Boulette</h1>
             </div>
-            <div class="hidden md:flex space-x-8 text-sm uppercase tracking-widest">
-                <a href="#gallery" class="hover:text-stardust transition">Exhibition</a>
-                <a href="#pricing" class="hover:text-stardust transition">Acquire</a>
-                <a href="#checkout" class="hover:text-stardust transition">Delivery</a>
-                <a href="#team" class="hover:text-stardust transition">Architects</a>
+            <div class="flex items-center space-x-6 md:space-x-8 text-sm uppercase tracking-widest">
+                <a href="#gallery" class="hidden md:block hover:text-stardust transition">Exhibition</a>
+                <a href="#pricing" class="hidden md:block hover:text-stardust transition">Acquire</a>
+                <a href="#checkout" class="hidden md:block hover:text-stardust transition">Delivery</a>
+                <a href="#team" class="hidden md:block hover:text-stardust transition">Architects</a>
+                
+                <button onclick="toggleCart()" class="relative text-stardust hover:text-white transform hover:scale-110 transition duration-300 group">
+                    <svg class="w-8 h-8 drop-shadow-[0_0_8px_rgba(212,175,55,0.5)]" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <span id="cartBadge" class="absolute -top-1 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full scale-0 transition-transform duration-300 shadow-lg border border-void">0</span>
+                </button>
             </div>
         </div>
     </nav>
 
-    <!-- 1. Hero Section -->
+    <div id="cartOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity" onclick="toggleCart()"></div>
+    <div id="cartDrawer" class="fixed top-0 right-0 w-full sm:w-96 h-full glass-panel bg-abyss/95 border-l border-white/10 z-[51] transform translate-x-full transition-transform duration-300 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center bg-void/50">
+            <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-stardust" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <h3 class="text-xl font-serif text-stardust uppercase tracking-widest">Nexus Cart</h3>
+            </div>
+            <button onclick="toggleCart()" class="text-gray-400 hover:text-white transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <div id="cartItemsContainer" class="flex-1 overflow-y-auto no-scrollbar p-2"></div>
+        <div class="p-6 border-t border-white/10 bg-void/80">
+            <div class="flex justify-between items-end mb-6">
+                <span class="text-gray-400 text-xs uppercase font-serif">Total Transfer Cost</span>
+                <span id="cartTotalPrice" class="text-3xl font-bold text-white font-serif">0 THB</span>
+            </div>
+            <button onclick="proceedToCheckout()" class="w-full py-4 bg-stardust text-void font-bold text-sm uppercase tracking-widest rounded hover:bg-yellow-400 transition">Proceed to Warp</button>
+        </div>
+    </div>
+
+    <div id="orderModal" class="custom-modal fixed inset-0 z-[60] flex items-center justify-center opacity-0 invisible">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeOrderModal()"></div>
+        <div class="modal-content-scale relative w-11/12 max-w-2xl mx-auto glass-panel border border-stardust/50 rounded-2xl overflow-hidden bg-abyss/95 z-10 max-h-[90vh] overflow-y-auto no-scrollbar text-white">
+            <button onclick="closeOrderModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition z-20"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+            <div class="flex flex-col sm:flex-row bg-void/50 border-b border-white/10 p-6 sm:p-8">
+                <div class="w-full sm:w-1/3 h-40 rounded-xl overflow-hidden border border-white/10"><img id="orderImg" src="" class="w-full h-full object-cover"></div>
+                <div class="w-full sm:w-2/3 sm:pl-6 mt-4 sm:mt-0 flex flex-col justify-center">
+                    <p id="orderFlavor" class="text-stardust text-xs uppercase mb-1"></p>
+                    <h3 id="orderName" class="text-3xl font-serif leading-tight"></h3>
+                    <div class="flex space-x-4 mt-4 pt-4 border-t border-white/10 text-gray-400">
+                        <div><span class="text-xl font-bold text-stardust" id="orderPro"></span> <span class="text-[10px] uppercase">Protein</span></div>
+                        <div><span class="text-xl font-bold text-white" id="orderCal"></span> <span class="text-[10px] uppercase">Kcal</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 sm:p-8 space-y-6">
+                <div id="meatSelectionContainer">
+                    <label class="block text-xs uppercase text-gray-400 mb-3 font-serif">Protein Core (เลือกเนื้อสัตว์)</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <label class="cursor-pointer"><input type="radio" name="pMeat" value="หมู" class="peer hidden" checked onchange="updatePriceDisplay()"><div class="py-2 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:bg-stardust/10 transition text-xs">หมู</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pMeat" value="วัว" class="peer hidden" onchange="updatePriceDisplay()"><div class="py-2 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:bg-stardust/10 transition text-xs">วัว</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pMeat" value="ไก่" class="peer hidden" onchange="updatePriceDisplay()"><div class="py-2 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:bg-stardust/10 transition text-xs">ไก่</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pMeat" value="กุ้ง" class="peer hidden" onchange="updatePriceDisplay()"><div class="py-2 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:bg-stardust/10 transition text-xs relative overflow-hidden">กุ้ง <span class="text-[8px] text-red-500 font-bold">+10฿</span></div></label>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-end mb-3"><label class="block text-xs uppercase text-gray-400 font-serif">Select Dimension (ขนาด)</label><span id="priceDisplay" class="text-stardust text-sm font-bold">69 THB</span></div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="cursor-pointer"><input type="radio" name="pSize" value="S" class="peer hidden" checked onchange="updatePriceDisplay()"><div class="py-3 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:text-stardust transition text-sm">S (4oz)</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pSize" value="M" class="peer hidden" onchange="updatePriceDisplay()"><div class="py-3 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:text-stardust transition text-sm">M (6oz)</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pSize" value="L" class="peer hidden" onchange="updatePriceDisplay()"><div class="py-3 text-center border border-white/10 rounded-lg peer-checked:border-stardust peer-checked:text-stardust transition text-sm">L (8oz)</div></label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-gray-400 mb-3 font-serif">Fusion Protocol (รูปแบบ)</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="cursor-pointer"><input type="radio" name="pType" value="single" class="peer hidden" checked onchange="toggleMixOptions()"><div class="py-3 text-center border border-white/10 rounded-lg peer-checked:border-hologram transition text-sm text-gray-400 peer-checked:text-hologram">รสเดียว</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="pType" value="mixed" class="peer hidden" onchange="toggleMixOptions()"><div class="py-3 text-center border border-white/10 rounded-lg peer-checked:border-stardust transition text-sm text-gray-400 peer-checked:text-stardust">ผสมรสชาติ</div></label>
+                    </div>
+                </div>
+                <div id="mixOptionsContainer" class="hidden bg-nebula/50 p-4 rounded-xl border border-white/5"><div id="mixFlavorsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar"></div></div>
+                <button onclick="submitProductOrder()" class="w-full py-4 bg-gradient-to-r from-stardust to-yellow-600 text-void font-bold rounded-lg transition transform hover:scale-[1.02]">Digitize to Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profileModal" class="custom-modal fixed inset-0 z-[60] flex items-center justify-center opacity-0 invisible">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeProfile()"></div>
+        <div class="modal-content-scale relative w-11/12 max-w-4xl mx-auto glass-panel border border-stardust/50 rounded-2xl overflow-hidden bg-abyss/95 z-10 flex flex-col md:flex-row text-white">
+            <button onclick="closeProfile()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition z-20"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+            <div class="w-full md:w-2/5 relative h-64 md:h-auto border-b md:border-b-0 md:border-r border-white/10 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-t from-abyss to-transparent z-10"></div>
+                <img id="modalImg" src="" class="w-full h-full object-cover transition duration-700">
+            </div>
+            <div class="w-full md:w-3/5 p-8 md:p-12 relative">
+                <p id="modalRole" class="text-stardust text-xs uppercase tracking-[0.3em] font-bold mb-2"></p>
+                <h3 id="modalName" class="text-3xl font-serif text-white mb-6"></h3>
+                <div class="space-y-4 text-gray-300 font-light leading-relaxed text-sm"><p id="modalBio1"></p><p id="modalBio2"></p></div>
+                <div class="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 gap-4">
+                    <div><p class="text-[10px] text-gray-500 uppercase tracking-widest">Clearance</p><p id="modalClearance" class="text-white font-serif"></p></div>
+                    <div><p class="text-[10px] text-gray-500 uppercase tracking-widest">Base</p><p id="modalBase" class="text-white font-serif"></p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <section class="relative min-h-screen flex items-center justify-center pt-20 px-6 overflow-hidden">
         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
-        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-900/30 rounded-full blur-[120px]"></div>
-        
         <div class="max-w-7xl mx-auto flex flex-col-reverse md:flex-row items-center w-full z-10 relative">
-            <div class="w-full md:w-1/2 space-y-6 text-center md:text-left mt-10 md:mt-0">
+            <div class="w-full md:w-1/2 space-y-6 text-center md:text-left">
                 <p class="text-stardust text-xs uppercase tracking-[0.4em] font-serif">Premium Whey Protein Craft</p>
-                <h2 class="text-5xl md:text-7xl font-serif font-bold leading-tight">
-                    Taste Beyond <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-stardust to-amber-200">Time & Space.</span>
-                </h2>
-                <p class="text-gray-400 font-light text-lg max-w-lg mx-auto md:mx-0">
-                    แกลเลอรีลูกชิ้นคราฟต์เวย์โปรตีนที่ผสานศิลปะแห่งรสชาติ พร้อมบริการจัดส่งสุดล้ำด้วย <span class="text-stardust">Timemachine</span> และ <span class="text-stardust">ประตูไปไหนก็ได้</span>
-                </p>
-                <div class="pt-4">
-                    <a href="#gallery" class="inline-block px-8 py-4 bg-transparent border border-stardust text-stardust hover:bg-stardust hover:text-void rounded transition duration-300 uppercase tracking-widest text-sm font-bold">
-                        Enter Gallery
-                    </a>
-                </div>
+                <h2 class="text-5xl md:text-7xl font-serif font-bold leading-tight text-white">Taste Beyond <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-stardust to-amber-200">Time & Space.</span></h2>
+                <p class="text-gray-400 font-light text-lg">แกลเลอรีลูกชิ้นที่ผสานศิลปะและวิทยาศาสตร์เข้าด้วยกัน</p>
+                <a href="#gallery" class="inline-block px-8 py-4 bg-transparent border border-stardust text-stardust hover:bg-stardust hover:text-void rounded transition tracking-widest text-sm font-bold uppercase mt-4">Enter Gallery</a>
             </div>
-
-            <div class="w-full md:w-1/2 h-[50vh] md:h-[70vh] relative flex justify-center items-center">
+            <div class="w-full md:w-1/2 h-[50vh] md:h-[70vh] flex justify-center items-center relative">
                 <div class="absolute w-3/4 h-3/4 border border-white/5 rounded-full animate-[spin_60s_linear_infinite]"></div>
-                <div class="absolute w-1/2 h-1/2 border border-stardust/20 rounded-full animate-[spin_40s_linear_infinite_reverse]"></div>
-                
-                <model-viewer 
-                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                    alt="Midnight Magic 3D"
-                    auto-rotate 
-                    rotation-per-second="30deg"
-                    camera-controls 
-                    class="w-full h-full relative z-10 drop-shadow-2xl floating-img"
-                    exposure="1.2">
-                </model-viewer>
+                <model-viewer src="Copilot3D-abf83e98-4383-4bd8-ba3c-44d9b3fc80ce.glb" auto-rotate camera-controls class="w-full h-full relative z-10 floating-img" exposure="1.2"></model-viewer>
             </div>
         </div>
     </section>
 
-    <!-- 2. Gallery -->
-    <section id="gallery" class="py-24 bg-abyss relative border-t border-white/5">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16 space-y-4">
-                <h3 class="text-4xl font-serif text-stardust">The Masterpieces</h3>
-                <p class="text-gray-400">นิทรรศการลูกชิ้น 8 รสชาติ ที่รังสรรค์อย่างวิจิตรบรรจง</p>
-            </div>
-            <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+    <section id="gallery" class="py-24 bg-abyss border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h3 class="text-4xl font-serif text-stardust mb-4">The Masterpieces</h3>
+            <p class="text-gray-400 mb-16 italic">คลิกที่เมนูเพื่อเลือกผสมรสชาติและขนาดของคุณ</p>
+            <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left"></div>
         </div>
     </section>
 
-    <!-- 3. Pricing -->
-    <section id="pricing" class="py-24 bg-void relative">
-        <div class="absolute inset-0 opacity-5 bg-[url('1.jpg')] bg-cover bg-center filter grayscale mix-blend-overlay"></div>
-        <div class="max-w-6xl mx-auto px-6 relative z-10">
-            <div class="text-center mb-12">
-                <h3 class="text-4xl font-serif text-stardust mb-4">Acquire The Art</h3>
-                <p class="text-gray-400">เลือกขนาดคอลเลกชันเพื่อนำเข้าสู่กระบวนการแพ็กมิติ</p>
-            </div>
-            <div class="w-full max-w-4xl mx-auto mb-16 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                <img src="10.jpg" alt="Packaging Sizes" class="w-full h-auto object-cover opacity-90 hover:opacity-100 transition duration-500" onerror="this.style.display='none'">
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="glass-panel p-8 rounded-xl flex flex-col text-center border border-white/5 hover:border-stardust/50 transition duration-300 group bg-abyss/80">
-                    <h4 class="font-serif text-2xl mb-1 text-gray-300 uppercase tracking-widest">Size S</h4>
-                    <p class="text-gray-500 text-sm mb-6 uppercase tracking-tighter">4oz Collection</p>
-                    <div class="text-4xl font-bold text-white mb-8">69 <span class="text-lg font-normal text-gray-500">THB</span></div>
-                    <button onclick="triggerWarp('Size S Collection')" class="mt-auto py-3 px-4 border border-stardust/50 text-stardust group-hover:bg-stardust group-hover:text-void rounded transition font-bold tracking-widest text-sm uppercase">Add to Cart</button>
-                </div>
-                <div class="glass-panel p-8 rounded-xl flex flex-col text-center border-2 border-stardust relative transform md:-translate-y-4 shadow-[0_0_30px_rgba(212,175,55,0.1)] group bg-abyss/90">
-                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-stardust text-void text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">Most Popular</div>
-                    <h4 class="font-serif text-2xl mb-1 text-stardust uppercase tracking-widest">Size M</h4>
-                    <p class="text-gray-400 text-sm mb-6 uppercase tracking-tighter">6oz Collection</p>
-                    <div class="text-5xl font-bold text-white mb-8">99 <span class="text-lg font-normal text-gray-500">THB</span></div>
-                    <button onclick="triggerWarp('Size M Collection')" class="mt-auto py-3 px-4 bg-stardust text-void hover:bg-yellow-400 rounded transition font-bold tracking-widest text-sm uppercase">Add to Cart</button>
-                </div>
-                <div class="glass-panel p-8 rounded-xl flex flex-col text-center border border-white/5 hover:border-stardust/50 transition duration-300 group bg-abyss/80">
-                    <h4 class="font-serif text-2xl mb-1 text-gray-300 uppercase tracking-widest">Size L</h4>
-                    <p class="text-gray-500 text-sm mb-6 uppercase tracking-tighter">8oz Collection</p>
-                    <div class="text-4xl font-bold text-white mb-8">149 <span class="text-lg font-normal text-gray-500">THB</span></div>
-                    <button onclick="triggerWarp('Size L Collection')" class="mt-auto py-3 px-4 border border-stardust/50 text-stardust group-hover:bg-stardust group-hover:text-void rounded transition font-bold tracking-widest text-sm uppercase">Add to Cart</button>
-                </div>
-            </div>
+    <section id="team" class="py-24 bg-abyss border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h3 class="text-4xl font-serif text-stardust mb-4 uppercase">The Development Team</h3>
+            <p class="text-gray-400 mb-16 italic">Nexus Architects (กดที่รูปเพื่อดูประวัติ / กดที่ชื่อเพื่อดูโปรไฟล์)</p>
+            <div id="team-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-12"></div>
         </div>
     </section>
 
-    <!-- 4. Checkout Form (ย้ายมาไว้ก่อน Team) -->
-    <section id="checkout" class="py-24 bg-abyss border-t border-white/5 relative">
-        <div class="absolute right-0 top-0 w-64 h-64 bg-green-900/20 rounded-full blur-[100px]"></div>
-        
-        <div class="max-w-3xl mx-auto px-6 relative z-10">
-            <div class="glass-panel p-8 md:p-12 rounded-2xl border-t-4 border-stardust shadow-2xl relative overflow-hidden bg-void/80">
-                <div class="scanline"></div> 
-                
-                <div class="text-center mb-10">
-                    <h3 class="text-3xl font-serif text-stardust mb-2 uppercase tracking-widest">Dimensional Checkout</h3>
-                    <p class="text-sm text-gray-400">ระบบฟอร์มสั่งซื้อข้ามมิติ - ระบุพิกัดปลายทางของคุณ</p>
-                </div>
-
-                <form id="orderForm" class="space-y-6 relative z-20">
+    <section id="checkout" class="py-24 bg-void border-t border-white/5 text-center">
+        <div class="max-w-3xl mx-auto px-6">
+            <div class="glass-panel p-8 rounded-2xl border-t-4 border-stardust shadow-2xl text-left">
+                <h3 class="text-3xl font-serif text-stardust mb-10 text-center uppercase tracking-widest">Dimensional Checkout</h3>
+                <form id="orderForm" class="space-y-6">
+                    <div><label class="block text-xs uppercase text-gray-400 mb-2 font-serif">Subject Name</label><input type="text" id="customerName" required class="w-full bg-nebula border border-white/10 rounded p-4 text-white focus:border-stardust outline-none"></div>
                     <div>
-                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-serif">Subject Name (ชื่อผู้รับ)</label>
-                        <input type="text" id="customerName" required class="w-full bg-nebula border border-white/10 rounded p-4 text-white focus:outline-none focus:border-stardust transition duration-300">
-                    </div>
-
-                    <div class="space-y-4 pt-4 border-t border-white/10">
-                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-serif">Select Transport Protocol (วิธีการจัดส่ง)</label>
-                        <div class="flex flex-col md:flex-row gap-4">
-                            <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="deliveryMethod" value="timemachine" class="peer hidden" checked>
-                                <div class="p-5 border border-white/10 rounded-lg text-center peer-checked:border-stardust peer-checked:bg-stardust/10 transition-all duration-300">
-                                    <p class="font-serif text-lg text-white peer-checked:text-stardust">TIMEMACHINE</p>
-                                    <p class="text-xs text-gray-400 mt-1">จัดส่งข้ามเวลา</p>
-                                </div>
-                            </label>
-                            <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="deliveryMethod" value="anywheredoor" class="peer hidden">
-                                <div class="p-5 border border-white/10 rounded-lg text-center peer-checked:border-hologram peer-checked:bg-hologram/10 transition-all duration-300">
-                                    <p class="font-serif text-lg text-white peer-checked:text-hologram">ANYWHERE DOOR</p>
-                                    <p class="text-xs text-gray-400 mt-1">จัดส่งข้ามมิติ/สถานที่</p>
-                                </div>
-                            </label>
+                        <label class="block text-xs uppercase text-gray-400 mb-2 font-serif">Select Transport Protocol</label>
+                        <div class="flex gap-4">
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="deliveryMethod" value="timemachine" class="peer hidden" checked><div class="p-4 border border-white/10 rounded text-center peer-checked:border-stardust peer-checked:bg-stardust/10 transition text-gray-400 peer-checked:text-stardust">TIMEMACHINE</div></label>
+                            <label class="flex-1 cursor-pointer"><input type="radio" name="deliveryMethod" value="anywheredoor" class="peer hidden"><div class="p-4 border border-white/10 rounded text-center peer-checked:border-hologram peer-checked:bg-hologram/10 transition text-gray-400 peer-checked:text-hologram">ANYWHERE DOOR</div></label>
                         </div>
                     </div>
-
-                    <div id="timemachineInput" class="animate-fade-in border-t border-green-800/30 pt-4">
-                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-serif">Target Era (เลือกยุคสมัย)</label>
-                        <select id="eraSelect" class="w-full bg-nebula border border-white/10 rounded p-4 text-white focus:outline-none focus:border-stardust appearance-none">
-                            <option value="stone_age">ยุคหิน (Stone Age - 10,000 BC)</option>
-                            <option value="ancient_egypt" selected>อียิปต์โบราณ (Ancient Egypt)</option>
-                            <option value="renaissance">ยุคฟื้นฟูศิลปวิทยา (Renaissance)</option>
-                            <option value="present">ยุคปัจจุบัน (Present Day)</option>
-                            <option value="future_2099">โลกอนาคต (Cyber City 2099)</option>
-                        </select>
-                    </div>
-
-                    <div id="anywhereDoorInput" class="hidden animate-fade-in border-t border-green-800/30 pt-4">
-                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-serif">Specific Coordinates (ระบุสถานที่/มิติ)</label>
-                        <input type="text" id="locationInput" placeholder="เช่น ยอดเขาเอเวอเรสต์, ดาวอังคาร โซน 4..." class="w-full bg-nebula border border-white/10 rounded p-4 text-white focus:outline-none focus:border-hologram transition duration-300">
-                    </div>
-
-                    <button type="submit" id="submitBtn" class="w-full mt-8 py-4 bg-gradient-to-r from-stardust to-yellow-600 text-void font-bold text-lg uppercase tracking-widest rounded-lg hover:opacity-90 transform hover:scale-[1.02] transition duration-300 shadow-xl">
-                        INITIALIZE WARP TRANSFER
-                    </button>
+                    <button type="submit" id="submitBtn" class="w-full py-4 bg-gradient-to-r from-stardust to-yellow-600 text-void font-bold rounded-lg transition transform hover:scale-[1.02]">INITIALIZE WARP TRANSFER</button>
                 </form>
             </div>
         </div>
     </section>
 
-    <!-- 5. Team (ย้ายลงมาต่อจาก Checkout) -->
-    <section id="team" class="py-24 bg-void border-t border-white/5 relative">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h3 class="text-4xl font-serif text-stardust mb-4 uppercase tracking-widest">The Development Team</h3>
-                <p class="text-gray-400">กลุ่มผู้รังสรรค์นวัตกรรมแห่งห้วงมิติ (Nexus Architects)</p>
-            </div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-12">
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="ณัฐธิดา อภิวงค์งาม.jpg" alt="ณัฐธิดา อภิวงค์งาม" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">ณัฐธิดา อภิวงค์งาม</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Chief Architect</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="ฉัตร์ฐริกา พูลทรัพย์.jpg" alt="ฉัตร์ฐริกา พูลทรัพย์" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">ฉัตร์ฐริกา พูลทรัพย์</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Nexus Designer</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="มนทิราลัย สมเดช.jpg" alt="มนทิราลัย สมเดช" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">มนทิราลัย สมเดช</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Visual Engineer</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="ดาหวัน โปรยกระโทก.jpg" alt="ดาหวัน โปรยกระโทก" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">ดาหวัน โปรยกระโทก</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Concept Specialist</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="ประกายทิพย์ น้อยสิงห์.jpg" alt="ประกายทิพย์ น้อยสิงห์" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">ประกายทิพย์ น้อยสิงห์</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Systems Analyst</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="พรหมพร สว่างศรี.jpg" alt="พรหมพร สว่างศรี" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">พรหมพร สว่างศรี</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Core Developer</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="จิดาภา อินทร์เมือง.jpg" alt="จิดาภา อินทร์เมือง" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">จิดาภา อินทร์เมือง</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Strategy Lead</p>
-                    </div>
-                </div>
-                <div class="team-card text-center space-y-4 group">
-                    <div class="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 shadow-2xl relative transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-                        <img src="วรรณิษา เจ็กสูงเนิน.jpg" alt="วรรณิษา เจ็กสูงเนิน" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/1A1C29/FFFFFF?text=Dev'">
-                    </div>
-                    <div class="space-y-1">
-                        <h5 class="text-white font-serif group-hover:text-stardust transition duration-300">วรรณิษา เจ็กสูงเนิน</h5>
-                        <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">Dimensional Specialist</p>
-                    </div>
-                </div>
-            </div>
+    <footer class="border-t border-white/5 py-12 text-center bg-void text-gray-500">
+        <div class="mb-8 flex justify-center space-x-6">
+            <a href="https://facebook.com" target="_blank" class="hover:text-stardust transform hover:scale-110 transition"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg></a>
+            <a href="https://instagram.com" target="_blank" class="hover:text-stardust transform hover:scale-110 transition"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg></a>
+            <a href="https://tiktok.com" target="_blank" class="hover:text-stardust transform hover:scale-110 transition"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 2.78-1.15 5.54-3.33 7.39-2.2 1.88-5.31 2.61-8.1 2.01-2.73-.6-5.18-2.58-6.19-5.18-1.03-2.67-.78-5.75.69-8.19 1.45-2.42 3.97-4.14 6.74-4.52.01 1.4.01 2.81.01 4.22-1.32.22-2.6.93-3.41 1.95-.81 1.01-1.07 2.4-.73 3.65.34 1.26 1.25 2.37 2.45 2.86 1.22.48 2.64.44 3.79-.19 1.18-.63 1.98-1.84 2.22-3.15.22-1.24.18-2.52.18-3.77-.02-7.14-.02-14.28-.02-21.41z" /></svg></a>
         </div>
-    </section>
-
-    <!-- 6. Review Section -->
-    <section class="py-24 bg-abyss border-t border-white/5">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h3 class="text-4xl font-serif text-stardust mb-4">Echoes of Time</h3>
-                <p class="text-gray-400">เสียงตอบรับจากลูกค้าในห้วงเวลาต่างๆ</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass-panel p-6 rounded-xl relative border-t-2 border-stardust bg-void/50">
-                    <div class="text-stardust text-4xl font-serif absolute top-4 right-4 opacity-20">"</div>
-                    <div class="flex items-center space-x-4 mb-4">
-                        <div class="w-12 h-12 rounded-full bg-yellow-900 flex items-center justify-center text-xl">𓀀</div>
-                        <div>
-                            <h5 class="font-serif font-bold text-white">Pharaoh Ramesses</h5>
-                            <p class="text-xs text-stardust">Ancient Egypt</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-300 text-sm leading-relaxed italic">"ส่งตรงถึงห้องบรรทมในพีระมิด! รส 'พละกำลังสีขาว' ช่วยฟื้นฟูพลังให้ข้าหลังจากการสร้างวิหารได้อย่างดีเยี่ยม"</p>
-                </div>
-
-                <div class="glass-panel p-6 rounded-xl relative border-t-2 border-stardust bg-void/50">
-                    <div class="text-stardust text-4xl font-serif absolute top-4 right-4 opacity-20">"</div>
-                    <div class="flex items-center space-x-4 mb-4">
-                        <div class="w-12 h-12 rounded-full bg-red-900 flex items-center justify-center text-xl">⚔️</div>
-                        <div>
-                            <h5 class="font-serif font-bold text-white">Centurion Marcus</h5>
-                            <p class="text-xs text-stardust">Roman Empire</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-300 text-sm leading-relaxed italic">"Veni, Vidi, Vici! ประตูไปไหนก็ได้เปิดออกกลางสนามรบ รส 'เจ้าสมุทร' เป็นเสบียงพรีเมียมที่ทหารโรมันคู่ควร"</p>
-                </div>
-
-                <div class="glass-panel p-6 rounded-xl relative border-t-2 border-stardust bg-void/50">
-                    <div class="text-stardust text-4xl font-serif absolute top-4 right-4 opacity-20">"</div>
-                    <div class="flex items-center space-x-4 mb-4">
-                        <div class="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-xl">🚀</div>
-                        <div>
-                            <h5 class="font-serif font-bold text-white">Commander Kael</h5>
-                            <p class="text-xs text-stardust">Mars Colony, 2099</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-300 text-sm leading-relaxed italic">"'มนตราสีนิล' คือศิลปะที่แท้จริง ระบบส่งข้ามมิติแม่นยำมาก โผล่มากลางยานแม่แบบพอดีคำ ไม่ต้องกินแต่อาหารหลอดอีกต่อไป"</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="border-t border-white/5 py-12 text-center bg-void">
-        <div class="mb-4">
-            <img src="LoGo.png" alt="Logo Footer" class="w-8 h-8 mx-auto mix-blend-screen opacity-50 grayscale hover:grayscale-0 transition duration-500" onerror="this.style.display='none'">
-        </div>
-        <p class="text-gray-600 text-[10px] font-serif tracking-[0.4em] uppercase">© 2026 Atelier de Boulette. All Dimensions Reserved.</p>
+        <img src="LoGo.png" alt="L" class="w-8 mx-auto mb-4 opacity-50 grayscale" onerror="this.src='https://via.placeholder.com/48x48/1A1C29/D4AF37?text=L'">
+        <p class="text-gray-600 text-[10px] uppercase tracking-widest font-serif">© 2026 Atelier de Boulette. All Dimensions Reserved.</p>
     </footer>
 
-    <!-- JavaScript Core -->
     <script>
+        // ข้อมูลสินค้า
         const galleryData = [
-            { id: 1, image: "4.jpg", name: "หญ้าอุดมสมบูรณ์", en: "The Verdant Pasture", flavor: "รสชาเขียว", pro: "22g", cal: "110" },
-            { id: 2, image: "3.jpg", name: "ทุ่งรวงทอง", en: "Golden Harvest", flavor: "รสข้าวโอ๊ต", pro: "20g", cal: "130" },
-            { id: 3, image: "5.jpg", name: "แสงอาทิตย์รุ่งอรุณ", en: "Morning Glow", flavor: "รสฟักทอง", pro: "18g", cal: "105" },
-            { id: 4, image: "8.jpg", name: "ขุมทรัพย์ใต้ดิน", en: "Earth’s Jewel", flavor: "รสมันญี่ปุ่น", pro: "19g", cal: "120" },
-            { id: 5, image: "6.jpg", name: "มรกตแห่งพงไพร", en: "Deep Forest Emerald", flavor: "รสผักโขม", pro: "24g", cal: "95" },
-            { id: 6, image: "2.jpg", name: "พละกำลังสีขาว", en: "Prime Strength", flavor: "รสหมูล้วน 98%", pro: "28g", cal: "180" },
-            { id: 7, image: "7.jpg", name: "เจ้าสมุทร", en: "Oceanic Pearl", flavor: "รสกุ้งล้วน", pro: "25g", cal: "140" },
-            { id: 8, image: "9.jpg", name: "มนตราสีนิล", en: "Midnight Magic", flavor: "รสช็อกโกแลต", pro: "26g", cal: "160" }
+            { id: 1, image: "4.jpg", name: "หญ้าอุดมสมบูรณ์", flavor: "รสชาเขียว", pro: "22g", cal: "110" },
+            { id: 2, image: "3.jpg", name: "ทุ่ง rวงทอง", flavor: "รสข้าวโอ๊ต", pro: "20g", cal: "130" },
+            { id: 3, image: "5.jpg", name: "แสงอาทิตย์รุ่งอรุณ", flavor: "รสฟักทอง", pro: "18g", cal: "105" },
+            { id: 4, image: "8.jpg", name: "ขุมทรัพย์ใต้ดิน", flavor: "รสมันญี่ปุ่น", pro: "19g", cal: "120" },
+            { id: 5, image: "6.jpg", name: "มรกตแห่งพงไพร", flavor: "รสผักโขม", pro: "24g", cal: "95" },
+            { id: 6, image: "2.jpg", name: "พละกำลังสีขาว", flavor: "รสหมูล้วน 98%", pro: "28g", cal: "180" },
+            { id: 7, image: "7.jpg", name: "เจ้าสมุทร", flavor: "รสกุ้งล้วน", pro: "25g", cal: "140", isShrimpOnly: true },
+            { id: 8, image: "9.jpg", name: "มนตราสีนิล", flavor: "รสช็อกโกแลต", pro: "26g", cal: "160" }
         ];
 
-        const gridContainer = document.getElementById('product-grid');
-        galleryData.forEach(item => {
-            gridContainer.innerHTML += `
-                <div class="art-card relative h-80 rounded-lg overflow-hidden cursor-pointer bg-void border border-white/10 group">
-                    <img src="${item.image}" alt="${item.name}" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition duration-500" onerror="this.src='https://via.placeholder.com/300/1A1C29/FFFFFF?text=Product'">
-                    <div class="absolute inset-0 p-6 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10">
-                        <p class="text-[10px] uppercase tracking-widest text-stardust mb-1">${item.flavor}</p>
-                        <h4 class="font-serif text-xl text-white leading-tight">${item.name}</h4>
-                        <p class="text-[9px] text-gray-400 mt-1 uppercase tracking-tighter">${item.en}</p>
+        // เรนเดอร์สินค้า
+        const grid = document.getElementById('product-grid');
+        galleryData.forEach(p => {
+            grid.innerHTML += `<div onclick="openOrderModal(${p.id})" class="art-card relative h-80 rounded-lg overflow-hidden cursor-pointer bg-void border border-white/10 group">
+                <img src="${p.image}" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition duration-500">
+                <div class="absolute inset-0 p-6 flex flex-col justify-end bg-gradient-to-t from-black/90 to-transparent">
+                    <p class="text-[10px] text-stardust uppercase mb-1">${p.flavor}</p>
+                    <h4 class="font-serif text-xl text-white leading-tight">${p.name}</h4>
+                </div>
+                <div class="overlay absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 z-20">
+                    <h5 class="font-serif text-white mb-4 uppercase text-xs text-stardust">Nutritional Info</h5>
+                    <div class="flex space-x-6 text-white text-center">
+                        <div><p class="text-3xl font-bold text-stardust">${p.pro}</p><p class="text-[9px]">Protein</p></div>
+                        <div><p class="text-3xl font-bold text-white">${p.cal}</p><p class="text-[9px]">Kcal</p></div>
                     </div>
-                    <div class="overlay absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20">
-                        <h5 class="font-serif text-white mb-4 uppercase tracking-widest text-xs text-stardust">Nutritional Nexus</h5>
-                        <div class="flex space-x-6">
-                            <div class="text-center">
-                                <p class="text-3xl font-bold text-stardust">${item.pro}</p>
-                                <p class="text-[9px] text-gray-500 uppercase tracking-widest mt-1">Protein</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-3xl font-bold text-white">${item.cal}</p>
-                                <p class="text-[9px] text-gray-500 uppercase tracking-widest mt-1">Kcal</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
+                </div>
+            </div>`;
         });
 
-        function triggerWarp(itemName) {
-            const portal = document.getElementById('warpPortal');
-            portal.classList.remove('warp-active');
-            void portal.offsetWidth;
-            portal.classList.add('warp-active');
-            
-            const toast = document.getElementById('toastMsg');
-            document.getElementById('toastText').innerText = `${itemName} digitized into your dimensional cart.`;
-            toast.classList.remove('translate-x-full', 'opacity-0');
-            
-            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); }, 4000);
+        // ระบบตะกร้า
+        let cart = [];
+        const priceMap = { 'S': 69, 'M': 99, 'L': 149 };
+
+        function toggleCart() {
+            document.getElementById('cartDrawer').classList.toggle('translate-x-full');
+            document.getElementById('cartOverlay').classList.toggle('hidden');
         }
 
-        const radioTimemachine = document.querySelector('input[value="timemachine"]');
-        const radioAnywhereDoor = document.querySelector('input[value="anywheredoor"]');
-        const timemachineInput = document.getElementById('timemachineInput');
-        const anywhereDoorInput = document.getElementById('anywhereDoorInput');
+        let currentSelectedProduct = null;
+        function openOrderModal(id) {
+            currentSelectedProduct = galleryData.find(p => p.id === id);
+            document.getElementById('orderImg').src = currentSelectedProduct.image;
+            document.getElementById('orderFlavor').innerText = currentSelectedProduct.flavor;
+            document.getElementById('orderName').innerText = currentSelectedProduct.name;
+            document.getElementById('orderPro').innerText = currentSelectedProduct.pro;
+            document.getElementById('orderCal').innerText = currentSelectedProduct.cal;
+            
+            document.getElementById('meatSelectionContainer').classList.toggle('hidden', !!currentSelectedProduct.isShrimpOnly);
+            document.querySelector('input[name="pSize"][value="S"]').checked = true;
+            document.querySelector('input[name="pMeat"][value="หมู"]').checked = true;
+            document.querySelector('input[name="pType"][value="single"]').checked = true;
+            
+            updatePriceDisplay();
+            toggleMixOptions();
+            
+            const list = document.getElementById('mixFlavorsList');
+            list.innerHTML = '';
+            galleryData.filter(x => x.id !== id).forEach(item => {
+                list.innerHTML += `<label class="flex items-center space-x-3 cursor-pointer p-2 hover:bg-white/5 rounded transition text-white">
+                    <input type="checkbox" name="pMixFlavor" value="${item.name}" class="accent-stardust"><span class="text-sm">${item.name}</span>
+                </label>`;
+            });
+            document.getElementById('orderModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
 
-        function updateFormUI() {
-            if (radioTimemachine.checked) {
-                timemachineInput.classList.remove('hidden');
-                anywhereDoorInput.classList.add('hidden');
-            } else {
-                timemachineInput.classList.add('hidden');
-                anywhereDoorInput.classList.remove('hidden');
+        function closeOrderModal() { document.getElementById('orderModal').classList.remove('active'); document.body.style.overflow = 'auto'; }
+        function toggleMixOptions() { document.getElementById('mixOptionsContainer').classList.toggle('hidden', !document.querySelector('input[name="pType"][value="mixed"]').checked); }
+        
+        function updatePriceDisplay() {
+            if(!currentSelectedProduct) return;
+            let p = priceMap[document.querySelector('input[name="pSize"]:checked').value];
+            if(currentSelectedProduct.isShrimpOnly || document.querySelector('input[name="pMeat"]:checked').value === 'กุ้ง') p += 10;
+            document.getElementById('priceDisplay').innerText = p + " THB";
+        }
+
+        function submitProductOrder() {
+            let p = priceMap[document.querySelector('input[name="pSize"]:checked').value];
+            let meat = currentSelectedProduct.isShrimpOnly ? "กุ้งล้วน" : document.querySelector('input[name="pMeat"]:checked').value;
+            if(meat === 'กุ้ง' || currentSelectedProduct.isShrimpOnly) p += 10;
+            let det = `เนื้อ${meat} | Size ${document.querySelector('input[name="pSize"]:checked').value}`;
+            if(document.querySelector('input[name="pType"]:checked').value === 'mixed') {
+                let m = Array.from(document.querySelectorAll('input[name="pMixFlavor"]:checked')).map(c => c.value);
+                det += m.length ? ` | ผสม: ${m.join(', ')}` : ` | รสเดียว`;
             }
+            addToCart(currentSelectedProduct.id + "_" + meat, currentSelectedProduct.name, currentSelectedProduct.image, det, p);
+            closeOrderModal();
         }
 
-        radioTimemachine.addEventListener('change', updateFormUI);
-        radioAnywhereDoor.addEventListener('change', updateFormUI);
+        function addToCart(id, name, img, det, price) {
+            let item = cart.find(x => x.id === id && x.details === det);
+            if(item) item.quantity++; else cart.push({id, name, image: img, details: det, price, quantity: 1});
+            updateCartUI();
+            const portal = document.getElementById('warpPortal'); portal.classList.remove('warp-active'); void portal.offsetWidth; portal.classList.add('warp-active');
+            const toast = document.getElementById('toastMsg'); document.getElementById('toastText').innerText = `${name} Digitized.`; 
+            toast.classList.remove('translate-x-full', 'opacity-0'); setTimeout(() => toast.classList.add('translate-x-full', 'opacity-0'), 3000);
+        }
 
-        document.getElementById('orderForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerText;
-            
-            submitBtn.innerText = 'TRANSMITTING TO NEXUS...';
-            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        function updateCartUI() {
+            const b = document.getElementById('cartBadge'); const tot = cart.reduce((s, i) => s + i.quantity, 0); b.innerText = tot; b.classList.toggle('scale-0', tot === 0);
+            const container = document.getElementById('cartItemsContainer'); let total = 0;
+            if(!cart.length) container.innerHTML = '<div class="h-full flex flex-col items-center justify-center opacity-50 text-white"><p>มิติว่างเปล่า</p></div>';
+            else {
+                container.innerHTML = '';
+                cart.forEach((it, idx) => {
+                    total += it.price * it.quantity;
+                    container.innerHTML += `<div class="flex items-center gap-4 p-4 border-b border-white/5 bg-white/[0.02] text-white"><img src="${it.image}" class="w-16 h-16 object-cover rounded"><div class="flex-1 min-w-0"><h4 class="text-sm truncate font-serif">${it.name}</h4><p class="text-stardust text-[9px] uppercase">${it.details}</p><p class="text-gray-400 text-xs mt-1 font-bold">${it.price} THB</p></div><div class="flex items-center gap-2 bg-void border border-white/10 rounded px-2 py-1"><button onclick="changeQty(${idx}, -1)">-</button><span class="text-xs w-4 text-center font-bold">${it.quantity}</span><button onclick="changeQty(${idx}, 1)" class="text-stardust">+</button></div></div>`;
+                });
+            }
+            document.getElementById('cartTotalPrice').innerText = total + ' THB';
+        }
+        function changeQty(idx, d) { cart[idx].quantity += d; if(cart[idx].quantity <= 0) cart.splice(idx, 1); updateCartUI(); }
+        function addGenericPackage(s, p) { addToCart(`pkg_${s}`, `Box Size ${s}`, '10.jpg', `คละรส | Size ${s}`, p); }
+        function proceedToCheckout() { if(!cart.length) return alert('ตะกร้าว่างเปล่า'); toggleCart(); document.getElementById('checkout').scrollIntoView({ behavior: 'smooth' }); }
 
-            const deliveryType = document.querySelector('input[name="deliveryMethod"]:checked').value;
-            const targetDestination = deliveryType === 'timemachine' 
-                                    ? document.getElementById('eraSelect').value 
-                                    : document.getElementById('locationInput').value;
+        // ข้อมูลทีมงาน
+        const teamProfiles = [
+            { name: "ณัฐธิดา อภิวงค์งาม", role: "Chief Architect", img: "ณัฐธิดา อภิวงค์งาม.jpg", link: "https://cntcnx10.github.io/CNTDA/", bio1: "CEO ของบริษัทขนส่งดวงดาว จบจากสถาบันวิศวกรรมอวกาศ", bio2: "ผู้บุกเบิกเทคโนโลยีประตูมิติสำหรับวงการอาหาร", clearance: "Level 10", base: "Alpha Centauri" },
+            { name: "จิดาภา อินทร์เมือง", role: "Strategy Lead", img: "จิดาภา อินทร์เมือง.jpg", link: "https://kngng30.github.io/portfolio-jidapa/", bio1: "นักยุทธศาสตร์การค้าข้ามจักรวาล เจรจาการค้ากับต่างดาว", bio2: "ผู้วางแผนการตลาดขอบกาแล็กซีทางช้างเผือก", clearance: "Level 8", base: "Interstellar Market" },
+            { name: "พรหมพร สว่างศรี", role: "Core Developer", img: "พรหมพร สว่างศรี.jpg", link: "https://cntcnx10.github.io/ploy/", bio1: "วิศวกรซอฟต์แวร์ผู้เขียนโปรแกรม 'พิกัดรสชาติ' ระดับเอนทิตี", bio2: "ควบคุมระบบนำทางประตูมิติให้แม่นยำระดับมิลลิเมตร", clearance: "Level 9", base: "Cyberspace" },
+            { name: "ฉัตร์ฐริกา พูลทรัพย์", role: "Nexus Designer", img: "ฉัตร์ฐริกา พูลทรัพย์.jpg", link: "https://cntcnx10.github.io/-BT/", bio1: "อดีตสถาปนิกสถานีอวกาศ ผู้ออกแบบโครงสร้างเส้นทางรสชาติ", bio2: "เชี่ยวชาญการจัดวางโปรตีนในสภาพไร้น้ำหนัก", clearance: "Level 8", base: "Station 9" },
+            { name: "ประกายทิพย์ น้อยสิงห์", role: "Systems Analyst", img: "ประกายทิพย์ น้อยสิงห์.jpg", link: "https://cntcnx10.github.io/-/", bio1: "อัจฉริยะด้านควอนตัม หน้าที่หลักคือควบคุมความเสถียรของเวลา", bio2: "คำนวณการพับมิติของกล่องบรรจุภัณฑ์ข้ามมิติ", clearance: "Level 9", base: "Quantum Core" },
+            { name: "มนทิราลัย สมเดช", role: "Visual Engineer", img: "มนทิราลัย สมเดช.jpg", link: "https://cntcnx10.github.io/G/", bio1: "นักเรียนทุนวิทยาลัยศิลปกรรมโฮโลแกรม ควบคุมแสงของลูกชิ้น", bio2: "ผู้พัฒนาระบบสัมผัสกลิ่นผ่านภาพ 16 มิติ", clearance: "Level 7", base: "Neo-Bangkok" },
+            { name: "วรรณิษา เจ็กสูงเนิน", role: "Dimensional Specialist", img: "วรรณิษา เจ็กสูงเนิน.jpg", link: "https://cntcnx10.github.io/bow/", bio1: "ผู้เชี่ยวชาญฟิสิกส์มิติที่ 5 เข้าใจการพับมิติอย่างถ่องแท้", bio2: "ควบคุมเสถียรภาพรูหนอนในการส่งสินค้าแช่แข็ง", clearance: "Level 9", base: "Dimension X" },
+            { name: "ดาหวัน โปรยกระโทก", role: "Concept Specialist", img: "ดาหวัน โปรยกระโทก.jpg", link: "https://cntcnx10.github.io/Dawan.01/", bio1: "นักโบราณคดีมิติ ผู้เดินทางข้ามเวลาไปศึกษาสูตรอาหารโบราณ", bio2: "ผู้ค้นพบสูตรลับเวย์โปรตีนจากยุคหิน", clearance: "Level 8", base: "Time Vault" }
+        ];
 
-            const payload = {
-                customer_name: document.getElementById('customerName').value,
-                delivery_protocol: deliveryType,
-                destination: targetDestination,
-                timestamp: new Date().toISOString()
-            };
+        const teamGrid = document.getElementById('team-grid');
+        teamProfiles.forEach((t, i) => {
+            teamGrid.innerHTML += `<div class="team-card space-y-4 group">
+                <div onclick="openProfile(${i})" class="cursor-pointer w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 border-white/10 transition hover:border-stardust shadow-xl">
+                    <img src="${t.img}" class="w-full h-full object-cover">
+                </div>
+                <div class="space-y-1">
+                    <a href="${t.link}" target="_blank" class="text-white font-serif hover:text-stardust transition hover:underline"><h5>${t.name}</h5></a>
+                    <p class="text-[10px] text-stardust uppercase tracking-widest opacity-70">${t.role}</p>
+                </div>
+            </div>`;
+        });
 
-            console.log('--- กำลังส่งคำสั่งซื้อข้ามมิติ... ---');
-            console.log('Payload Data:', payload);
+        function openProfile(idx) {
+            const t = teamProfiles[idx];
+            document.getElementById('modalImg').src = t.img;
+            document.getElementById('modalRole').innerText = t.role;
+            document.getElementById('modalName').innerText = t.name;
+            document.getElementById('modalBio1').innerText = t.bio1;
+            document.getElementById('modalBio2').innerText = t.bio2;
+            document.getElementById('modalClearance').innerText = t.clearance;
+            document.getElementById('modalBase').innerText = t.base;
+            document.getElementById('profileModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeProfile() { document.getElementById('profileModal').classList.remove('active'); document.body.style.overflow = 'auto'; }
 
-            setTimeout(() => {
-                alert('คำสั่งซื้อถูกส่งเข้าสู่กระแสเวลาเรียบร้อยแล้ว! (Simulation Mode: ตรวจสอบ Payload ได้ที่ Console)');
-                this.reset();
-                updateFormUI();
-                submitBtn.innerText = originalText;
-                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }, 1500);
+        // ฟอร์มสั่งซื้อ
+        document.getElementById('orderForm').addEventListener('submit', e => {
+            e.preventDefault(); if(!cart.length) return alert('ตะกร้าว่างเปล่า');
+            document.getElementById('submitBtn').innerText = 'TRANSMITTING...';
+            setTimeout(() => { alert('ออเดอร์ถูกส่งเข้าสู่กระแสเวลาเรียบร้อยแล้ว!'); location.reload(); }, 1500);
         });
     </script>
 </body>
